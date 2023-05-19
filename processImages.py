@@ -11,6 +11,7 @@ from colorama import Fore, Style
 import gpustat
 import math
 
+
 def get_args():
     parser = argparse.ArgumentParser(description='Parameters to pass to txpd_test.m')
     parser.add_argument('--kill', action='store_true', help='if specified, kill all matlab process')
@@ -46,7 +47,7 @@ def get_cache_dir(args):
     :return:  None. get cache dir to store temp scripts
     """
     os.makedirs('./cache', exist_ok=True)
-    base =  str(datetime.now()).split(' ')[0].replace('-', '_') + '_run'
+    base = str(datetime.now()).split(' ')[0].replace('-', '_') + '_run'
     current_runs = os.listdir('./cache')
     current_runs = len([run for run in current_runs if run.startswith(base)]) + 1
     args.cache_dir = join('./cache', base + f'_{current_runs}')
@@ -66,7 +67,7 @@ def concise_index(index_list):
         if not cur_start:
             cur_start = idx
             prev = idx
-        elif idx == prev+1:
+        elif idx == prev + 1:
             prev = idx
             continue
         else:
@@ -140,7 +141,7 @@ def get_date_path(args):
         if os.path.exists(date_path):
             break
         else:
-            print(Fore.RED + f'path {date_path} does not exist!'+ Style.RESET_ALL)
+            print(Fore.RED + f'path {date_path} does not exist!' + Style.RESET_ALL)
     args.date_path = date_path
     return
 
@@ -169,13 +170,14 @@ def get_test(test_indexes, args):
                 for d in dummy:
                     if ':' in d:
                         start, end = d.split(':')
-                        selected_idxs += list(range(int(start), int(end)+1))
+                        selected_idxs += list(range(int(start), int(end) + 1))
                     else:
                         selected_idxs.append(int(d))
                 args.tests = selected_idxs
                 break
             except:
-                print(Fore.RED + f"an error occurred while parsing test indexes '{selected_test_indexes}'"+ Style.RESET_ALL)
+                print(
+                    Fore.RED + f"an error occurred while parsing test indexes '{selected_test_indexes}'" + Style.RESET_ALL)
     for idx in args.tests:
         if idx not in test_indexes:
             print(
@@ -222,10 +224,10 @@ def get_burst(args):
 
             for t_idx in args.tests:
                 cur_index = input(
-                f"test{t_idx}: {Fore.BLUE} which burst range? \n  {Fore.GREEN} "
-                f"existing bursts are: {concise_index(get_bursts(os.path.join(args.date_path, f'test{t_idx}')))}\n"
+                    f"test{t_idx}: {Fore.BLUE} which burst range? \n  {Fore.GREEN} "
+                    f"existing bursts are: {concise_index(get_bursts(os.path.join(args.date_path, f'test{t_idx}')))}\n"
 
-            )
+                )
                 args.bursts[t_idx] = parse_range_string(cur_index)
 
     for t_idx in sorted(args.bursts.keys()):
@@ -301,18 +303,29 @@ def get_infoMat(args):
             f"{Style.RESET_ALL}\n"
         )
         if not os.path.exists(f'/gpfs/fs2/scratch/mdoyley_lab/fUS/channel_data/{infoMat}'):
-            print(Fore.RED + f'infoMat not found at /gpfs/fs2/scratch/mdoyley_lab/fUS/channel_data/{infoMat}!'+ Style.RESET_ALL)
+            print(
+                Fore.RED + f'infoMat not found at /gpfs/fs2/scratch/mdoyley_lab/fUS/channel_data/{infoMat}!' + Style.RESET_ALL)
         else:
             break
     args.infoMat = infoMat
     return
 
 
+def get_th(args):
+    th = input(
+        f"{Fore.BLUE}th? \n  {Fore.GREEN}"
+        f"e.g.; 50"
+        f"{Style.RESET_ALL}\n"
+    )
+    args.th = int(th)
+    return
+
+
 def get_schedule(args):
     print(f"scheduling runs...")
     job_per_gpu = []
-    for _ in range(len(args.gpu_indexes)-1):
-        job_per_gpu.append(math.ceil(args.num_jobs/len(args.gpu_indexes)))
+    for _ in range(len(args.gpu_indexes) - 1):
+        job_per_gpu.append(math.ceil(args.num_jobs / len(args.gpu_indexes)))
     job_per_gpu.append(args.num_jobs - sum(job_per_gpu))
 
     num_bursts = 0
@@ -321,13 +334,13 @@ def get_schedule(args):
         num_bursts += len(args.bursts[test])
         flattened_burst_list += [f"{test}_{b_idx}" for b_idx in args.bursts[test]]
     args.flattened_burst_list = flattened_burst_list
-    bursts_per_job = math.ceil(num_bursts/args.num_jobs)
+    bursts_per_job = math.ceil(num_bursts / args.num_jobs)
 
     job_lists = []
-    for i in range(args.num_jobs-1):
-        cur_job_list = flattened_burst_list[i*bursts_per_job:(i+1)*bursts_per_job]
+    for i in range(args.num_jobs - 1):
+        cur_job_list = flattened_burst_list[i * bursts_per_job:(i + 1) * bursts_per_job]
         job_lists.append(cur_job_list)
-    cur_job_list = flattened_burst_list[(args.num_jobs-1)*bursts_per_job:]
+    cur_job_list = flattened_burst_list[(args.num_jobs - 1) * bursts_per_job:]
     job_lists.append(cur_job_list)
 
     # parse job_lists to matlab nested arrays:
@@ -340,6 +353,7 @@ def get_schedule(args):
 
         matlab_job_list = '{' + ','.join(mat_list) + '}'
         return matlab_job_list
+
     matlab_job_lists = [parse_job_list(cur_job_list) for cur_job_list in job_lists]
     args.matlab_job_lists = matlab_job_lists
     return
@@ -370,7 +384,7 @@ def generate_m_files(args):
                     load('/gpfs/fs2/scratch/mdoyley_lab/fUS/channel_data/{args.infoMat}'); % todo: info_num
                     date=date_tmp;
                     test=['test',num2str(testnum+startnum-1)];
-    
+
                     burst=burstnum;
                     FullBoard128 = 1;
                     fname = ['/scratch/mdoyley_lab/fUS/channel_data/' date '/' test '/burst',num2str(burst) '.mat'];
@@ -407,33 +421,33 @@ def generate_m_files(args):
                         RF1(:,:,i) = sum(RFa(:,:,i1),3);
                         RF2(:,:,i) = sum(RFb(:,:,i1),3);
                     end
-    
+
             %         % IQ formation
                     fs = 1540/(2*(z(2)-z(1)));
                     IQ1 = RF2IQ(RF1,Trans.frequency*1e6,fs);
                     IQ2 = RF2IQ(RF2,Trans.frequency*1e6,fs);
-    
-    
-                    th=15; % todo:
+
+
+                    th={args.th}; % todo:
                     [~,BloodIQ1] = computeBloodSignal(IQ1,th);
                     [~,BloodIQ2] = computeBloodSignal(IQ2,th);
-    
+
                     R = sum(BloodIQ1.*conj(BloodIQ2),3);
                     ang = angle(R);
                     ko = pi/3;
                     PD_frameSplit_corr = abs(R).*exp(-(ang.^2)./(ko.^2));
                     PD_frameSplit = abs(R);
-    
+
             %         PD_frameSplit_corr = 10*log10(PD_frameSplit_corr./max(PD_frameSplit_corr(:)));
             %         PD_frameSplit = 10*log10(PD_frameSplit./max(PD_frameSplit(:)));
-    
+
                     [zz, xx] = ndgrid(z,x);
                     x_new = linspace(x(1),x(end),length(z));
                     [zz_new,xx_new] = ndgrid(z,x_new);
-    
+
                     F1 = griddedInterpolant(zz,xx,PD_frameSplit_corr,'cubic');
                     F2 = griddedInterpolant(zz,xx,PD_frameSplit,'cubic');
-    
+
                     PD_frameSplit_corr = F1(zz_new,xx_new);
                     PD_frameSplit = F2(zz_new,xx_new);
             %
@@ -458,7 +472,7 @@ def generate_m_files(args):
             """
         with open(join(args.cache_dir, 'scripts', f'part_{idx}.m'), 'w') as f:
             f.write(cur_m_code)
-        cur_bash_code = f"""module load matlab/r2022a;\nCUDA_VISIBLE_DEVICES={args.gpu_indexes[idx%len(args.gpu_indexes)]} matlab -nodesktop -r part_{idx} | tee {join('../logs', f'part_{idx}_log.txt')} &>/dev/null &"""
+        cur_bash_code = f"""module load matlab/r2022a;\nCUDA_VISIBLE_DEVICES={args.gpu_indexes[idx % len(args.gpu_indexes)]} matlab -nodesktop -r part_{idx} | tee {join('../logs', f'part_{idx}_log.txt')} &>/dev/null &"""
         with open(join(args.cache_dir, 'scripts', f'part_{idx}.sh'), 'w') as f:
             f.write(cur_bash_code)
     return
@@ -467,7 +481,7 @@ def generate_m_files(args):
 def run_jobs(args):
     args_dict = vars(args)
     with open(join(args.cache_dir, 'args.json'), 'w') as f:
-        json.dump(args_dict,f)
+        json.dump(args_dict, f)
     print(f"running jobs...")
     os.chdir(join(args.cache_dir, 'scripts'))
     for idx in range(args.num_jobs):
@@ -477,9 +491,12 @@ def run_jobs(args):
     print(f"jobs are running in background.")
     print(f"config files are stored in {args.cache_dir}; including temporary matlab/bash files and logs")
     print(f"- to kill these jobs, run {Fore.BLUE}'python processImages.py --kill'{Style.RESET_ALL}")
-    print(f"- to check current progress, run {Fore.BLUE}'python processImages.py --check'{Style.RESET_ALL}; then enter this run_name '{os.path.basename(args.cache_dir)}' as prompted")
-    print(f"- to check current system info, run {Fore.BLUE}'top'{Style.RESET_ALL}; use {Fore.BLUE}'Ctrl-c'{Style.RESET_ALL} to exit")
-    print(f"- to check current gpu info, run {Fore.BLUE}'watch gpustat'{Style.RESET_ALL}; use {Fore.BLUE}'Ctrl-c'{Style.RESET_ALL} to exit")
+    print(
+        f"- to check current progress, run {Fore.BLUE}'python processImages.py --check'{Style.RESET_ALL}; then enter this run_name '{os.path.basename(args.cache_dir)}' as prompted")
+    print(
+        f"- to check current system info, run {Fore.BLUE}'top'{Style.RESET_ALL}; use {Fore.BLUE}'Ctrl-c'{Style.RESET_ALL} to exit")
+    print(
+        f"- to check current gpu info, run {Fore.BLUE}'watch gpustat'{Style.RESET_ALL}; use {Fore.BLUE}'Ctrl-c'{Style.RESET_ALL} to exit")
     return
 
 
@@ -495,7 +512,8 @@ if __name__ == '__main__':
             os.system("ps -A | grep tee | awk '{print $1}' | xargs kill -9 $1")
     elif args.check:
         current_runs = os.listdir('./cache')
-        current_runs = sorted([run for run in current_runs if '_run_' in run], key = lambda x: int(''.join(x.replace('_run_','_').split('_'))))
+        current_runs = sorted([run for run in current_runs if '_run_' in run],
+                              key=lambda x: int(''.join(x.replace('_run_', '_').split('_'))))
         latest_run = current_runs[-1]
         print(f"The latest run is {latest_run}.")
         confirmed = input("use this one? enter y / yes / n /no\n")
@@ -507,10 +525,10 @@ if __name__ == '__main__':
         with open(join('./cache', use_run, 'args.json'), 'r') as f:
             configs = json.load(f)
         num_all_burst = len(configs['flattened_burst_list'])
-        all_logs = os.listdir(join(configs['cache_dir'],'logs'))
+        all_logs = os.listdir(join(configs['cache_dir'], 'logs'))
         all_logs_text = []
         for log in all_logs:
-            with open(join(configs['cache_dir'],'logs', log), 'r') as f:
+            with open(join(configs['cache_dir'], 'logs', log), 'r') as f:
                 dummy = f.readlines()
             all_logs_text += dummy
         pattern = r"\d+/[-+]?\d+/\d{1,2}-\d{1,2}-\d{2,4}$"
@@ -531,7 +549,7 @@ if __name__ == '__main__':
         get_RF_frames(args)
         get_angleCount(args)
         get_infoMat(args)
+        get_th(args)
         get_schedule(args)
         generate_m_files(args)
         run_jobs(args)
-
